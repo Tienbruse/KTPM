@@ -1,0 +1,18 @@
+{
+    "RAG": {
+        "rouge1": 0.4991,
+        "rouge2": 0.3656,
+        "rougeL": 0.3611,
+        "meteor": 0.4334,
+        "bertscore": 0.0069,
+        "deepseek_score": 7.3953
+    },
+    "Deepseek": {
+        "rouge1": 0.3813,
+        "rouge2": 0.2131,
+        "rougeL": 0.2345,
+        "meteor": 0.2484,
+        "bertscore": 0.0064,
+        "deepseek_score": 5.0814
+    }
+}

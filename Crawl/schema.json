@@ -1,0 +1,80 @@
+{
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "CÔNG TY TNHH THƯƠNG MẠI VẬN TẢI PHƯƠNG PHÚC",
+    "url": "https://b2b.fairs.vn/vi/company/htx-sxkd-rau-an-toan-dvth-xa-cam-vinh.1769629",
+    "identifier": "3001935749",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Tại nhà ông Nguyễn Trọng Huynh, thôn Ngụ Quế",
+      "addressLocality": "Xã Cẩm Vĩnh",
+      "addressRegion": "Huyện Cẩm Xuyên",
+      "addressCountry": "VN"
+    },
+    "numberOfEmployees": 5,
+    "foundingDate": "N/A",
+    "description": "Công ty TNHH Thương Mại Vận Tải Phương Phúc chuyên về vận tải hàng hóa bằng đường bộ và các lĩnh vực liên quan.",
+    "areaServed": "Việt Nam",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "availableLanguage": "Vietnamese"
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Danh sách ngành nghề kinh doanh",
+      "itemListElement": [
+        {
+          "@type": "Service",
+          "name": "Vận tải hàng hóa bằng đường bộ",
+          "serviceType": "4933"
+        },
+        {
+          "@type": "Service",
+          "name": "Xay xát và sản xuất bột thô",
+          "serviceType": "1061"
+        },
+        {
+          "@type": "Service",
+          "name": "Hoàn thiện công trình xây dựng",
+          "serviceType": "43300"
+        },
+        {
+          "@type": "Service",
+          "name": "Bán buôn gạo, lúa mỳ, hạt ngũ cốc khác, bột mỳ",
+          "serviceType": "46310"
+        },
+        {
+          "@type": "Service",
+          "name": "Bán buôn đồ uống",
+          "serviceType": "4633"
+        },
+        {
+          "@type": "Service",
+          "name": "Vận tải hành khách đường bộ trong nội thành, ngoại thành (trừ vận tải bằng xe buýt)",
+          "serviceType": "4931"
+        },
+        {
+          "@type": "Service",
+          "name": "Vận tải hành khách đường bộ khác",
+          "serviceType": "4932"
+        },
+        {
+          "@type": "Service",
+          "name": "Nhà hàng và các dịch vụ ăn uống phục vụ lưu động",
+          "serviceType": "5610"
+        },
+        {
+          "@type": "Service",
+          "name": "Hoạt động kiến trúc và tư vấn kỹ thuật có liên quan",
+          "serviceType": "7110"
+        },
+        {
+          "@type": "Service",
+          "name": "Cho thuê máy móc, thiết bị và đồ dùng hữu hình khác không kèm người điều khiển",
+          "serviceType": "7730"
+        }
+      ]
+    }
+  }
+  
