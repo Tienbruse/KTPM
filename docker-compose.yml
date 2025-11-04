@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  company-search-service:
+    build:
+      context: .
+      dockerfile: services/company_search_service/Dockerfile
+    environment:
+      SEARCH_SERVICE_ELASTICSEARCH_HOST: elasticsearch
+      SEARCH_SERVICE_ELASTICSEARCH_PORT: 9200
+      SEARCH_SERVICE_ELASTICSEARCH_USER: admin
+      SEARCH_SERVICE_ELASTICSEARCH_PASSWORD: admin
+      SEARCH_SERVICE_ELASTICSEARCH_INDEX: company-data
+    ports:
+      - "9010:9010"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  chatbot-service:
+    build:
+      context: .
+      dockerfile: chatbot/Dockerfile
+    environment:
+      SEARCH_SERVICE_URL: http://company-search-service:9010
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_USER: admin
+      ELASTICSEARCH_PASSWORD: admin
+      ELASTICSEARCH_INDEX: company-data
+    ports:
+      - "8910:8910"
+    depends_on:
+      company-search-service:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy

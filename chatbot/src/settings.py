@@ -35,6 +35,10 @@ class ExternalConfig(BaseSettings):
     ELASTICSEARCH_PASSWORD: str = "admin"
     ELASTICSEARCH_INDEX: str = "company-data"
 
+    # Internal services
+    SEARCH_SERVICE_URL: str = "http://localhost:9010"
+    SEARCH_SERVICE_TIMEOUT: int = 30
+
 
 SETTINGS = ExternalConfig()  # pyright: ignore
 APP_CONFIGS: dict[str, Any] = {

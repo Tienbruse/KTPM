@@ -5,8 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from src.api.routers import api_router
 from src.services.rag import CompanyRAG
-from src.services.retriever import Retriever
+from src.services.rag import search_client
 from src.settings import APP_CONFIGS, SETTINGS
+from src.utils.telemetry import (
+    RequestContextMiddleware,
+    configure_logging,
+    metrics_endpoint,
+)
 from starlette.middleware.cors import CORSMiddleware
 
 tracemalloc.start()
@@ -23,16 +28,20 @@ class EndpointFilter(logging.Filter):
 
 
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+configure_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.rag_service = CompanyRAG()
-    app.state.retriever = Retriever(index_name=SETTINGS.ELASTICSEARCH_INDEX).retriever
-    yield
+    try:
+        yield
+    finally:
+        await search_client.close()
 
 
 app = FastAPI(**APP_CONFIGS, lifespan=lifespan)
+app.add_middleware(RequestContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +61,11 @@ async def healthcheck() -> dict[str, str]:
 @app.get("/ready", include_in_schema=False)
 async def readycheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics():
+    return await metrics_endpoint()
 
 
 app.include_router(

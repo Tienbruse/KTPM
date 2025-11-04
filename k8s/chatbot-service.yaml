@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chatbot-service
+  template:
+    metadata:
+      labels:
+        app: chatbot-service
+    spec:
+      containers:
+        - name: chatbot-service
+          image: ghcr.io/example/chatbot-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SEARCH_SERVICE_URL
+              value: http://company-search-service:9010
+          ports:
+            - containerPort: 8910
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8910
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8910
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 700m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-service
+spec:
+  selector:
+    app: chatbot-service
+  ports:
+    - port: 8910
+      targetPort: 8910
+      protocol: TCP

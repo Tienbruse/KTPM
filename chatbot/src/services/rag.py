@@ -3,9 +3,9 @@ from typing import List
 from langchain_core.tools import tool
 from src.services.agent import Agent
 from src.services.entity_processor import EntityProcessor
-from src.services.query_creator import QueryCreator
-from src.services.retriever import Retriever
-from src.settings import SETTINGS
+from src.services.search_client import SearchServiceClient
+
+search_client = SearchServiceClient()
 
 
 @tool
@@ -16,22 +16,12 @@ async def retrieve_documents(
     """Retrieve documents from Elasticsearch"""
     entities = EntityProcessor().get_entities(user_input)
 
-    # Create and execute query
-    queries = QueryCreator().create_query(
+    search_response = await search_client.search(
         entities=entities,
-        index_name=SETTINGS.ELASTICSEARCH_INDEX,
         top_k=top_k,
     )
-    if not queries:
-        return []
 
-    search_response = await Retriever().retriever.retrieve_documents(queries=queries)
-
-    # Format results
-    company_results = [
-        CompanyRAG().format_search_results(hit, entities)
-        for hit in search_response["hits"]
-    ]
+    company_results = search_response.get("results", [])
 
     if not company_results:
         return [{"info": "Not found"}]
@@ -56,33 +46,3 @@ class CompanyRAG:
         self._agent.clear_memory()
         return None
 
-    @staticmethod
-    def format_search_results(
-        hit: dict,
-        entities: dict,
-    ) -> dict:
-        """Format search results into standard output format"""
-        result = {
-            "id": hit["_id"],
-            "phone": hit["_source"].get("phone"),
-            "email": hit["_source"].get("email"),
-            "tax_code": hit["_source"].get("tax_code"),
-            "address": hit["_source"].get("address"),
-            "url": hit["_source"].get("url"),
-            "products": hit["_source"].get("products"),
-            "company_name": hit["_source"].get("name"),
-            "information": hit["_source"].get("introduction"),
-            "num_employees": hit["_source"].get("employees"),
-        }
-
-        if entities["product_names"]:
-            result["products"] = [
-                product
-                for product in result.get("products", [])
-                if entities["product_names"].lower() in product["product_name"].lower()
-            ]
-        else:
-            result["products"] = result["products"][:3]
-
-        print("result", result)
-        return result

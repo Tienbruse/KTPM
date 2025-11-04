@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: company-search-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: company-search-service
+  template:
+    metadata:
+      labels:
+        app: company-search-service
+    spec:
+      containers:
+        - name: company-search-service
+          image: ghcr.io/example/company-search-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SEARCH_SERVICE_ELASTICSEARCH_HOST
+              value: elasticsearch
+            - name: SEARCH_SERVICE_ELASTICSEARCH_PORT
+              value: "9200"
+            - name: SEARCH_SERVICE_ELASTICSEARCH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-credentials
+                  key: username
+            - name: SEARCH_SERVICE_ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-credentials
+                  key: password
+            - name: SEARCH_SERVICE_ELASTICSEARCH_INDEX
+              value: company-data
+          ports:
+            - containerPort: 9010
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9010
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9010
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: company-search-service
+spec:
+  selector:
+    app: company-search-service
+  ports:
+    - port: 9010
+      targetPort: 9010
+      protocol: TCP

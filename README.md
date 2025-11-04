@@ -1,4 +1,18 @@
-This is a project about to find information of company
+This is a project about to find information of company.
+
+## Microservice architecture
+
+The monolith has been split into independent services:
+
+- `chatbot/` exposes the conversational API and forwards structured queries to the
+  `company-search-service` via REST.
+- `services/company_search_service/` owns Elasticsearch query composition and provides a reusable
+  search API. Both services emit metrics at `/metrics` and propagate `X-Request-ID` headers for
+  distributed tracing.
+- Container images and orchestration manifests live in `docker-compose.yml` and `k8s/`.
+
+The repo also contains architecture documentation in `docs/` and a CI workflow under
+`.github/workflows/ci.yml` that builds the services and validates the codebase.
 
 # Structure
 
