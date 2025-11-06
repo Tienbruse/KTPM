@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "aiobreaker>=1.2.0",
     "aiohttp>=3.11.12",
     "dotenv>=0.9.9",
     "elasticsearch>=8.8.0,<9.0.0",
@@ -22,3 +23,8 @@ dependencies = [
     "streamlit>=1.42.2",
     "uvicorn>=0.34.0",
 ]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["company_search_service", "chatbot", "services", "src"]
+combine_as_imports = true

@@ -9,12 +9,12 @@ SRC_DIR = os.path.join(BASE_DIR, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-from company_search_service.config import get_settings
-
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 
 def main() -> None:
+    from company_search_service.config import get_settings
+
     settings = get_settings()
     uvicorn.run(
         "company_search_service.app:app",

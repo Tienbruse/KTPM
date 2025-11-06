@@ -18,15 +18,22 @@ logger.setLevel(logging.INFO)
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Attach a request identifier and basic timing for observability."""
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Response]
+    ) -> Response:
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         start_time = time.perf_counter()
         try:
             response = await call_next(request)
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception:  # pragma: no cover - defensive logging
             duration_ms = (time.perf_counter() - start_time) * 1000
             logger.exception(
-                "Unhandled exception", extra={"request_id": request_id, "path": request.url.path, "duration_ms": duration_ms}
+                "Unhandled exception",
+                extra={
+                    "request_id": request_id,
+                    "path": request.url.path,
+                    "duration_ms": duration_ms,
+                },
             )
             raise
 
@@ -34,7 +41,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Response-Time-ms"] = f"{duration_ms:.2f}"
 
-        MetricsRecorder.instance().record(request.method, request.url.path, response.status_code, duration_ms)
+        MetricsRecorder.instance().record(
+            request.method, request.url.path, response.status_code, duration_ms
+        )
         logger.info(
             "request completed",
             extra={
@@ -54,6 +63,9 @@ class MetricsRecorder:
     def __init__(self) -> None:
         self._totals = defaultdict(int)
         self._latency = defaultdict(list)
+        self._dependency_calls = defaultdict(int)
+        self._breaker_state: dict[str, str] = {}
+        self._breaker_open_total = defaultdict(int)
 
     @classmethod
     def instance(cls) -> "MetricsRecorder":
@@ -61,10 +73,28 @@ class MetricsRecorder:
             cls._instance = cls()
         return cls._instance
 
-    def record(self, method: str, path: str, status_code: int, duration_ms: float) -> None:
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
+    def record(
+        self, method: str, path: str, status_code: int, duration_ms: float
+    ) -> None:
         key = (method.upper(), path, status_code)
         self._totals[key] += 1
         self._latency[key].append(duration_ms)
+
+    def record_dependency_call(
+        self, dependency: str, operation: str, outcome: str
+    ) -> None:
+        key = (dependency, operation, outcome)
+        self._dependency_calls[key] += 1
+
+    def record_breaker_state(self, breaker_name: str, state: str) -> None:
+        previous = self._breaker_state.get(breaker_name)
+        self._breaker_state[breaker_name] = state
+        if state == "open" and previous != "open":
+            self._breaker_open_total[breaker_name] += 1
 
     def snapshot(self) -> dict[str, list[dict[str, float]]]:
         buckets: dict[str, list[dict[str, float]]] = defaultdict(list)
@@ -86,10 +116,30 @@ class MetricsRecorder:
             )
         return buckets
 
+    def dependency_snapshot(self) -> dict[str, dict[str, dict[str, float]]]:
+        snapshot: dict[str, dict[str, dict[str, float]]] = defaultdict(
+            lambda: defaultdict(dict)
+        )
+        for (dependency, operation, outcome), count in self._dependency_calls.items():
+            snapshot[dependency][operation][outcome] = float(count)
+        return snapshot
+
+    def breaker_snapshot(self) -> dict[str, dict[str, float | str]]:
+        return {
+            "states": self._breaker_state.copy(),
+            "opens": {
+                name: float(count) for name, count in self._breaker_open_total.items()
+            },
+        }
+
 
 async def metrics_endpoint() -> PlainTextResponse:
-    snapshot = MetricsRecorder.instance().snapshot()
-    lines = ["# HELP http_requests_total Total number of HTTP requests", "# TYPE http_requests_total summary"]
+    recorder = MetricsRecorder.instance()
+    snapshot = recorder.snapshot()
+    lines = [
+        "# HELP http_requests_total Total number of HTTP requests",
+        "# TYPE http_requests_total summary",
+    ]
     for path, records in snapshot.items():
         for record in records:
             labels = {
@@ -99,9 +149,48 @@ async def metrics_endpoint() -> PlainTextResponse:
             }
             label_str = ",".join(f'{key}="{value}"' for key, value in labels.items())
             lines.append(f"http_requests_total{{{label_str}}} {int(record['count'])}")
-            lines.append(f"http_request_duration_ms_avg{{{label_str}}} {record['avg_ms']}")
-            lines.append(f"http_request_duration_ms_p95{{{label_str}}} {record['p95_ms']}")
-            lines.append(f"http_request_duration_ms_max{{{label_str}}} {record['max_ms']}")
+            lines.append(
+                f"http_request_duration_ms_avg{{{label_str}}} {record['avg_ms']}"
+            )
+            lines.append(
+                f"http_request_duration_ms_p95{{{label_str}}} {record['p95_ms']}"
+            )
+            lines.append(
+                f"http_request_duration_ms_max{{{label_str}}} {record['max_ms']}"
+            )
+
+    dep_snapshot = recorder.dependency_snapshot()
+    if dep_snapshot:
+        lines.append(
+            "# HELP circuit_breaker_calls_total Total calls to external dependencies grouped by outcome"
+        )
+        lines.append("# TYPE circuit_breaker_calls_total counter")
+        for dependency, operations in dep_snapshot.items():
+            for operation, outcomes in operations.items():
+                for outcome, count in outcomes.items():
+                    label_str = f'dependency="{dependency}",operation="{operation}",outcome="{outcome}"'
+                    lines.append(
+                        f"circuit_breaker_calls_total{{{label_str}}} {int(count)}"
+                    )
+
+    breaker_snapshot = recorder.breaker_snapshot()
+    if breaker_snapshot["states"]:
+        lines.append(
+            "# HELP circuit_breaker_state Current state of the circuit breaker (0=closed,1=half_open,2=open)"
+        )
+        lines.append("# TYPE circuit_breaker_state gauge")
+        for name, state in breaker_snapshot["states"].items():
+            state_value = {"closed": 0, "half_open": 1, "open": 2}.get(state, -1)
+            label_str = f'name="{name}",state="{state}"'
+            lines.append(f"circuit_breaker_state{{{label_str}}} {state_value}")
+    if breaker_snapshot["opens"]:
+        lines.append(
+            "# HELP circuit_breaker_open_total Number of times the circuit breaker transitioned to open"
+        )
+        lines.append("# TYPE circuit_breaker_open_total counter")
+        for name, count in breaker_snapshot["opens"].items():
+            label_str = f'name="{name}"'
+            lines.append(f"circuit_breaker_open_total{{{label_str}}} {int(count)}")
     return PlainTextResponse("\n".join(lines) + "\n")
 
 
@@ -120,4 +209,3 @@ def configure_logging() -> None:
     handler.setFormatter(formatter)
     if not logger.handlers:
         logger.addHandler(handler)
-

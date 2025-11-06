@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI, Request, status
+from aiobreaker import CircuitBreakerError
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -17,7 +18,7 @@ logger = logging.getLogger("company_search_service")
 
 
 @asynccontextmanager
-def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):
     service = SearchService()
     app.state.search_service = service
     try:
@@ -38,7 +39,19 @@ def get_router(settings: Settings) -> APIRouter:
         request: SearchRequest,
         search_service: SearchService = Depends(get_search_service),
     ) -> JSONResponse:
-        response = await search_service.search(request)
+        try:
+            response = await search_service.search(request)
+        except CircuitBreakerError as exc:
+            # Let the global handler convert this into a 503 response.
+            raise exc
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception(
+                "Search request failed",
+                extra={"path": "/search/companies"},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="search backend error"
+            ) from exc
         return JSONResponse(content=response.model_dump())
 
     @router.post("/search/companies/index", status_code=status.HTTP_202_ACCEPTED)
@@ -75,3 +88,16 @@ async def metrics():
 
 router = get_router(settings)
 app.include_router(router, prefix=settings.api_prefix)
+
+
+@app.exception_handler(CircuitBreakerError)
+async def handle_circuit_breaker_error(
+    _: Request, exc: CircuitBreakerError
+) -> JSONResponse:
+    logger.warning(
+        "Circuit breaker prevented downstream call", extra={"error": str(exc)}
+    )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "Search backend temporarily unavailable"},
+    )

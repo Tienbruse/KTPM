@@ -1,0 +1,62 @@
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: chatbot-api
+  namespace: emissary
+  labels:
+    rate-limit-tier: standard
+spec:
+  hostname: "*"
+  prefix: /api/chatbot/
+  service: chatbot-service.default:8910
+  timeout_ms: 5000
+  allow_upgrade:
+    - websocket
+  retry_policy:
+    retry_on: 5xx,gateway-error
+    num_retries: 2
+    per_try_timeout_ms: 2000
+  cors:
+    origins:
+      - https://chat.example.com
+    methods:
+      - GET
+      - POST
+      - OPTIONS
+    headers:
+      - Content-Type
+      - Authorization
+      - X-Request-ID
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: company-search-api
+  namespace: emissary
+  labels:
+    rate-limit-tier: standard
+spec:
+  hostname: "*"
+  prefix: /api/search/
+  service: company-search-service.default:9010
+  timeout_ms: 8000
+  retry_policy:
+    retry_on: 5xx,refused-stream
+    num_retries: 1
+    per_try_timeout_ms: 3000
+  circuit_breakers:
+    - max_connections: 200
+      max_pending_requests: 50
+      max_retries: 3
+  cors:
+    origins:
+      - https://chat.example.com
+      - https://admin.example.com
+    methods:
+      - POST
+      - OPTIONS
+    headers:
+      - Content-Type
+      - Authorization
+      - X-Request-ID

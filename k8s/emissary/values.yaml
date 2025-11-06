@@ -1,0 +1,81 @@
+---
+nameOverride: emissary-ingress
+fullnameOverride: emissary-ingress
+
+agent:
+  enabled: false
+
+service:
+  type: LoadBalancer
+  annotations: {}
+
+daemonSet:
+  enabled: false
+
+deployment:
+  replicaCount: 2
+  rollingUpdate:
+    maxUnavailable: 1
+
+listener:
+  protocol: HTTPS
+  port: 8443
+
+env:
+  - name: AMBASSADOR_ID
+    value: emissary
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8877"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+extraVolumes:
+  - name: tls-secret
+    secret:
+      secretName: emissary-gateway-tls
+
+extraVolumeMounts:
+  - name: tls-secret
+    mountPath: /etc/ambassador/tls
+    readOnly: true
+
+podSecurityContext:
+  fsGroup: 101
+
+securityContext:
+  runAsUser: 101
+  runAsGroup: 101
+  allowPrivilegeEscalation: false
+
+metrics:
+  serviceMonitor:
+    enabled: true
+    honorLabels: true
+
+tracing:
+  enabled: true
+  type: envoy
+  envoy:
+    service: jaeger-collector.observability
+    port: 14268
+    samplingRate: 1.0
+
+rateLimit:
+  enabled: true
+  service:
+    type: ClusterIP
+    annotations: {}
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
