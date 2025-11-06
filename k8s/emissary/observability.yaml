@@ -1,0 +1,47 @@
+---
+apiVersion: getambassador.io/v3alpha1
+kind: LogService
+metadata:
+  name: emissary-logs
+  namespace: emissary
+spec:
+  service: fluentbit.logging:24224
+  driver: fluentd
+  driver_config:
+    enable_json_parsing: "true"
+    json_log_key: message
+  grpc: false
+---
+apiVersion: getambassador.io/v3alpha1
+kind: TracingService
+metadata:
+  name: emissary-tracing
+  namespace: emissary
+spec:
+  service: jaeger-collector.observability:14268
+  driver: envoy
+  config:
+    collector_cluster: jaeger-collector
+    collector_endpoint: "/api/traces"
+    collector_hostname: jaeger-collector.observability.svc.cluster.local
+    shared_span_context: false
+  samplingRate: 1.0
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: emissary-ingress
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: emissary-ingress
+  namespaceSelector:
+    matchNames:
+      - emissary
+  endpoints:
+    - port: stats
+      interval: 30s
+      scrapeTimeout: 10s

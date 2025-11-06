@@ -1,0 +1,83 @@
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Filter
+metadata:
+  name: oidc-auth
+  namespace: emissary
+spec:
+  OAuth2:
+    authorizationURL: https://auth.example.com/oauth2/auth
+    grantType: authorization_code
+    accessTokenURL: https://auth.example.com/oauth2/token
+    clientID: chatbot-gateway
+    secret: emissary/oidc-client-secret
+    protectedOrigins:
+      - origin: https://chat.example.com
+        scopes:
+          - openid
+          - profile
+          - company.search.read
+    callbackURL: https://chat.example.com/oauth2/callback
+    audience: api://chatbot
+    logoutURL: https://auth.example.com/logout?redirect=https://chat.example.com
+    addRequestHeaders:
+      - name: x-user-id
+        value: "{{ oidc.id_token.sub }}"
+      - name: x-user-email
+        value: "{{ oidc.id_token.email }}"
+    timeout: 5s
+---
+apiVersion: getambassador.io/v3alpha1
+kind: FilterPolicy
+metadata:
+  name: default-policy
+  namespace: emissary
+spec:
+  rules:
+    - host: "*"
+      path: /api/
+      filters:
+        - name: oidc-auth
+          arguments:
+            allowAnonymous: false
+---
+apiVersion: getambassador.io/v3alpha1
+kind: RateLimitService
+metadata:
+  name: ratelimit
+  namespace: emissary
+spec:
+  service: emissary-ingress-ratelimit.emissary:8081
+  timeout_ms: 500
+  protocol_version: v3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: RateLimitPolicy
+metadata:
+  name: chatbot-default-limit
+  namespace: emissary
+spec:
+  targetRef:
+    group: getambassador.io
+    kind: Mapping
+    selector:
+      matchLabels:
+        rate-limit-tier: standard
+  rules:
+    - limit:
+        requests: 120
+        unit: minute
+      when:
+        - selector:
+            matchHeaders:
+              - name: x-user-id
+        - selector:
+            matchHeaders:
+              - name: ":path"
+                prefix: /api/chatbot/
+    - limit:
+        requests: 600
+        unit: minute
+      when:
+        - selector:
+            matchRemoteAddress: {}
