@@ -14,6 +14,14 @@ The monolith has been split into independent services:
 The repo also contains architecture documentation in `docs/` and a CI workflow under
 `.github/workflows/ci.yml` that builds the services and validates the codebase.
 
+## Latest platform additions
+
+- **Circuit breaker:** Elasticsearch calls are guarded by `aiobreaker`. See
+  `docs/breaker-ambassador.md` for tuning and testing details.
+- **Ambassador gateway:** Emissary manifests under `k8s/emissary/` expose the
+  chatbot/search APIs through an authenticated, rate-limited edge layer. Setup
+  instructions live in `docs/emissary.md`.
+
 # Structure
 
 ```bash
