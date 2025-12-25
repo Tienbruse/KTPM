@@ -1,0 +1,128 @@
+{
+  "meta": {
+    "timestamp_utc": "2025-12-23T16:12:27Z",
+    "index": "company-data-20240329",
+    "dsl_version": "v1",
+    "runs": 10,
+    "warmup": 5,
+    "search_batch_size": 0,
+    "msearch_batch_size": 0,
+    "mget_batch_size": 10,
+    "mget_docs": 50,
+    "skipped_dsl_queries": []
+  },
+  "methods": {
+    "search_dsl": {
+      "method": "search_dsl",
+      "ops_per_run": 3,
+      "requests_per_run": 3,
+      "wall_ms": {
+        "runs": 10,
+        "min_ms": 16.519,
+        "max_ms": 23.507,
+        "mean_ms": 18.473,
+        "median_ms": 18.008,
+        "p95_ms": 21.858,
+        "p99_ms": 23.177
+      },
+      "qps": {
+        "count": 10,
+        "min": 127.621,
+        "max": 181.612,
+        "mean": 163.9,
+        "median": 166.61,
+        "p95": 178.595,
+        "p99": 181.009
+      },
+      "es_took_ms": {
+        "count": 30,
+        "min": 3.0,
+        "max": 9.0,
+        "mean": 3.833,
+        "median": 4.0,
+        "p95": 6.1,
+        "p99": 8.42
+      }
+    },
+    "msearch_dsl": {
+      "method": "msearch_dsl",
+      "ops_per_run": 3,
+      "requests_per_run": 1,
+      "wall_ms": {
+        "runs": 10,
+        "min_ms": 5.846,
+        "max_ms": 14.985,
+        "mean_ms": 9.312,
+        "median_ms": 8.29,
+        "p95_ms": 14.551,
+        "p99_ms": 14.899
+      },
+      "qps": {
+        "count": 10,
+        "min": 200.196,
+        "max": 513.16,
+        "mean": 346.472,
+        "median": 361.896,
+        "p95": 456.856,
+        "p99": 501.9
+      },
+      "es_took_ms": {
+        "count": 30,
+        "min": 3.0,
+        "max": 11.0,
+        "mean": 5.7,
+        "median": 5.0,
+        "p95": 10.0,
+        "p99": 10.71
+      }
+    },
+    "get": {
+      "method": "get",
+      "ops_per_run": 50,
+      "requests_per_run": 50,
+      "wall_ms": {
+        "runs": 10,
+        "min_ms": 35.888,
+        "max_ms": 42.311,
+        "mean_ms": 37.633,
+        "median_ms": 37.237,
+        "p95_ms": 41.324,
+        "p99_ms": 42.113
+      },
+      "qps": {
+        "count": 10,
+        "min": 1181.73,
+        "max": 1393.238,
+        "mean": 1331.95,
+        "median": 1342.753,
+        "p95": 1391.601,
+        "p99": 1392.91
+      },
+      "found_docs": 50
+    },
+    "mget": {
+      "method": "mget",
+      "ops_per_run": 50,
+      "requests_per_run": 5,
+      "wall_ms": {
+        "runs": 10,
+        "min_ms": 15.158,
+        "max_ms": 17.855,
+        "mean_ms": 16.114,
+        "median_ms": 16.221,
+        "p95_ms": 17.292,
+        "p99_ms": 17.743
+      },
+      "qps": {
+        "count": 10,
+        "min": 2800.277,
+        "max": 3298.615,
+        "mean": 3109.548,
+        "median": 3082.516,
+        "p95": 3297.466,
+        "p99": 3298.385
+      },
+      "found_docs": 50
+    }
+  }
+}
