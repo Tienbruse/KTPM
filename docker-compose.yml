@@ -20,6 +20,7 @@ services:
       context: .
       dockerfile: services/company_search_service/Dockerfile
     environment:
+      SEARCH_SERVICE_PORT: 9010
       SEARCH_SERVICE_ELASTICSEARCH_HOST: elasticsearch
       SEARCH_SERVICE_ELASTICSEARCH_PORT: 9200
       SEARCH_SERVICE_ELASTICSEARCH_USER: admin

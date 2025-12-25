@@ -13,7 +13,9 @@ logger = logging.getLogger("ingestion_job")
 logging.basicConfig(level=logging.INFO)
 
 
-async def publish_batch(session: aiohttp.ClientSession, payload: list[Dict[str, Any]], endpoint: str) -> None:
+async def publish_batch(
+    session: aiohttp.ClientSession, payload: list[Dict[str, Any]], endpoint: str
+) -> None:
     async with session.post(endpoint, json={"documents": payload}) as response:
         if response.status >= 400:
             text = await response.text()

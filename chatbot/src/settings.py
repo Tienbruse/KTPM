@@ -36,8 +36,12 @@ class ExternalConfig(BaseSettings):
     ELASTICSEARCH_INDEX: str = "company-data"
 
     # Internal services
-    SEARCH_SERVICE_URL: str = "http://localhost:9010"
+    SEARCH_SERVICE_URL: str = "http://localhost:9011"
     SEARCH_SERVICE_TIMEOUT: int = 30
+    # Entity extraction modes: fast (no LLM), llm (always LLM), hybrid (auto choose)
+    ENTITY_EXTRACTOR_MODE: str = "llm"  # options: fast|llm|hybrid
+    FAST_ENTITY_FIELD: str = "company_name"
+    HYBRID_LENGTH_THRESHOLD: int = 80  # characters
 
 
 SETTINGS = ExternalConfig()  # pyright: ignore

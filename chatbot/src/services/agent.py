@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 
 from langchain.tools import BaseTool
@@ -6,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.base import RunnableSerializable
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
+
 from src.constants.prompts import AGENT_COMPANY
 from src.services.generator import Generator
 
@@ -29,7 +31,7 @@ class Agent(Generator):
     ) -> RunnableSerializable:
         raise NotImplementedError
 
-    async def generate(self, message: str):
+    async def generate(self, message: str, thread_id: str | None = None):
         """Extract entities from the user's message
 
         Args:
@@ -38,14 +40,15 @@ class Agent(Generator):
         Returns:
             dict: Extracted entities
         """
+        effective_thread = thread_id or str(uuid.uuid4())
         response = await self._agent.ainvoke(
             {"messages": [HumanMessage(content=message)]},
-            config={"configurable": {"thread_id": "1"}},
+            config={"configurable": {"thread_id": effective_thread}},
         )
         return response["messages"][-1].content
 
-    async def get_reponse(self, user_input: str):
-        response = await self.generate(user_input)
+    async def get_reponse(self, user_input: str, thread_id: str | None = None):
+        response = await self.generate(user_input, thread_id=thread_id)
         return response
 
     def clear_memory(self):

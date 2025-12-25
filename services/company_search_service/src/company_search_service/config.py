@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     host: str = "0.0.0.0"
-    port: int = 9010
+    port: int = 9011
     api_prefix: str = "/v1"
 
     elasticsearch_host: str = "localhost"

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, Field
+
 from src.constants.prompts import FUNCTION_ENTITES
 
 
@@ -18,13 +19,15 @@ class Entity(BaseModel):
         default=None,
         description=FUNCTION_ENTITES["business_field"],
     )
-    num_employees: Optional[str] = Field(
+    num_employees: Optional[int] = Field(
         default=None,
         description=FUNCTION_ENTITES["num_employees"],
+        ge=0,
     )
     num_employees_operator: Optional[str] = Field(
         default=None,
         description=FUNCTION_ENTITES["num_employees_operator"],
+        pattern="^(gte|lte)$",
     )
     product_names: Optional[str] = Field(
         default=None,

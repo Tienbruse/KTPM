@@ -388,9 +388,23 @@ class SearchService:
                 results=[], meta=SearchMeta(total=0, took_ms=0.0), raw_hits=[]
             )
 
+        if query_payload.get("log_payload"):
+            logger.info(
+                "Elasticsearch query payload",
+                extra={"query": query_payload["log_payload"]},
+            )
+
         raw_response = await self._gateway.search(query_payload)
         hits = raw_response.get("hits", {}).get("hits", [])
         took_ms = raw_response.get("took", 0)
+        logger.info(
+            "Search completed",
+            extra={
+                "hits": len(hits),
+                "took_ms": took_ms,
+                "index": query_payload.get("index"),
+            },
+        )
         results = [
             self._format_hit(hit, request.entities.product_names) for hit in hits
         ]
@@ -403,12 +417,22 @@ class SearchService:
         source = hit.get("_source", {})
         products = source.get("products", [])
         if product_names:
-            wanted = product_names.lower()
-            products = [
-                product
-                for product in products
-                if wanted in (product.get("product_name") or "").lower()
+            filters = [
+                name.strip().lower()
+                for name in product_names.split(",")
+                if name and name.strip()
             ]
+            if filters:
+                products = [
+                    product
+                    for product in products
+                    if any(
+                        flt in (product.get("product_name") or "").lower()
+                        for flt in filters
+                    )
+                ]
+            else:
+                products = products[:3]
         else:
             products = products[:3]
 
@@ -420,7 +444,7 @@ class SearchService:
             tax_code=source.get("tax_code"),
             address=source.get("address"),
             url=source.get("url"),
-            information=source.get("introduction"),
+            information=source.get("information") or source.get("introduction"),
             num_employees=source.get("employees"),
             products=[Product(**product) for product in products],
         )

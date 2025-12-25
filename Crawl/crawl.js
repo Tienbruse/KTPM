@@ -3,29 +3,37 @@ const fs = require('fs');
 const xlsx = require('xlsx');
 
 const BASE_URL = "https://b2b.fairs.vn";
-const TIMEOUT = 120000; 
-const DELAY_BETWEEN_REQUESTS = 2000; 
+const TIMEOUT = 120000;
+const DELAY_BETWEEN_REQUESTS = 2000;
 const OUTPUT_EXCEL = "ThongTinDoanhNghiep.xlsx";
+const PAGE_START = Number(process.env.PAGE_START || 500);
+const PAGE_END = Number(process.env.PAGE_END || 600);
+const BATCH_FLUSH_SIZE = 20;
 
-function initExcelIfNeeded() {
-  if (!fs.existsSync(OUTPUT_EXCEL)) {
-    const wb = xlsx.utils.book_new();
-    const ws = xlsx.utils.json_to_sheet([]);
-    xlsx.utils.book_append_sheet(wb, ws, "Companies");
-    xlsx.writeFile(wb, OUTPUT_EXCEL);
-    console.log(`Đã tạo file Excel mới: ${OUTPUT_EXCEL}`);
-  } else {
+function loadWorkbook() {
+  let wb;
+  if (fs.existsSync(OUTPUT_EXCEL)) {
+    wb = xlsx.readFile(OUTPUT_EXCEL);
     console.log(`Đã tồn tại file Excel: ${OUTPUT_EXCEL} (sẽ được ghi thêm)`);
+  } else {
+    wb = xlsx.utils.book_new();
+    console.log(`Đã tạo file Excel mới: ${OUTPUT_EXCEL}`);
   }
+  let ws = wb.Sheets["Companies"];
+  if (!ws) {
+    ws = xlsx.utils.json_to_sheet([]);
+    xlsx.utils.book_append_sheet(wb, ws, "Companies");
+  }
+  return { wb, ws };
 }
 
-function appendRowToExcel(rowData) {
-  const wb = xlsx.readFile(OUTPUT_EXCEL);
-  const ws = wb.Sheets["Companies"];
-
-  xlsx.utils.sheet_add_json(ws, [rowData], { origin: -1, skipHeader: true });
-
+function flushRowsToExcel(wb, ws, buffer) {
+  if (!buffer.length) return;
+  const hasData = Boolean(ws["!ref"]);
+  xlsx.utils.sheet_add_json(ws, buffer, { origin: -1, skipHeader: hasData });
   xlsx.writeFile(wb, OUTPUT_EXCEL);
+  console.log(`Đã ghi ${buffer.length} dòng vào ${OUTPUT_EXCEL}`);
+  buffer.length = 0;
 }
 async function initBrowser() {
   const browser = await puppeteer.launch({ headless: true });
@@ -127,12 +135,12 @@ async function getCompanyInfo(page, company) {
 }
 
 (async () => {
-  initExcelIfNeeded();
-
+  const { wb, ws } = loadWorkbook();
+  const rowBuffer = [];
   const { browser, page } = await initBrowser();
 
   try {
-    for (let iPage = 500; iPage <= 600; iPage++) {
+    for (let iPage = PAGE_START; iPage <= PAGE_END; iPage++) {
       const startUrl = buildUrl(iPage, 4575, 20);
       console.log(`\n==============`);
       console.log(`Trang: ${iPage}`);
@@ -154,7 +162,10 @@ async function getCompanyInfo(page, company) {
       for (let c of companies) {
         try {
           const companyData = await getCompanyInfo(page, c);
-          appendRowToExcel(companyData);
+          rowBuffer.push(companyData);
+          if (rowBuffer.length >= BATCH_FLUSH_SIZE) {
+            flushRowsToExcel(wb, ws, rowBuffer);
+          }
 
           await new Promise(res => setTimeout(res, DELAY_BETWEEN_REQUESTS));
 
@@ -162,10 +173,12 @@ async function getCompanyInfo(page, company) {
           console.error(`Lỗi khi lấy dữ liệu từ ${c.link}: ${err.message}`);
         }
       }
+      flushRowsToExcel(wb, ws, rowBuffer);
     }
   } catch (err) {
     console.error(`Có lỗi xảy ra: ${err.message}`);
   } finally {
+    flushRowsToExcel(wb, ws, rowBuffer);
     await browser.close();
   }
 })();
